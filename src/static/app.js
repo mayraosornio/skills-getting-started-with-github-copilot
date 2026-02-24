@@ -20,11 +20,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Participants section HTML
+        const participantsHTML = details.participants && details.participants.length > 0
+          ? `<div class="participants-list">
+                ${details.participants
+                  .map(
+                    (email) => `
+                      <span class="participant-item">
+                        ${email}
+                        <span class="delete-icon" title="Remove participant" data-activity="${name}" data-email="${email}">&times;</span>
+                      </span>`
+                  )
+                  .join("")}
+              </div>`
+          : '<p class="no-participants">No participants yet.</p>';
+      // Add delete icon click handler
+      setTimeout(() => {
+        document.querySelectorAll('.delete-icon').forEach(icon => {
+          icon.addEventListener('click', async (e) => {
+            const activityName = icon.getAttribute('data-activity');
+            const email = icon.getAttribute('data-email');
+            if (!activityName || !email) return;
+            try {
+              const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`, {
+                method: 'POST',
+              });
+              if (response.ok) {
+                fetchActivities();
+              } else {
+                const result = await response.json();
+                alert(result.detail || 'Failed to unregister participant.');
+              }
+            } catch (error) {
+              alert('Failed to unregister participant.');
+            }
+          });
+        });
+      }, 0);
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Participants:</strong>
+            ${participantsHTML}
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // <-- Add this line
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
